@@ -4,6 +4,9 @@ import com.peerislands.demo.enums.OrderStatus;
 import com.peerislands.demo.model.Order;
 import com.peerislands.demo.repository.OrderRepository;
 import com.peerislands.demo.service.OrderService;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class OrderServiceImpl implements OrderService {
     private final OrderRepository repo;
 
@@ -22,49 +26,68 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order createOrder(Order order) {
+        log.info("Creating order with {} items", order.getItems().size());
         order.setStatus(OrderStatus.PENDING);
-        return repo.save(order);
+        Order saved = repo.save(order);
+        log.info("Order created. orderId={}, status={}", saved.getId(), saved.getStatus());
+        return saved;
     }
 
     @Override
     public Optional<Order> getOrder(Long id) {
+        log.debug("Fetching order. orderId={}", id);
         return repo.findById(id);
     }
 
     @Override
     public List<Order> listOrders(Optional<OrderStatus> status) {
+        log.debug("Listing orders. status={}", status.orElse(null));
         return status.map(repo::findByStatus).orElseGet(repo::findAll);
     }
 
     @Override
     @Transactional
     public Order updateStatus(Long orderId, OrderStatus newStatus) {
-        Order o = repo.findById(orderId).orElseThrow(() -> new IllegalArgumentException("Order not found"));
-        o.setStatus(newStatus);
-        return repo.save(o);
+        log.debug("Updating order status. orderId={}, newStatus={}", orderId, newStatus);
+        Order order = repo.findById(orderId).orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        OrderStatus oldStatus = order.getStatus();
+        order.setStatus(newStatus);
+        log.info("Order status updated. orderId={}, {} -> {}", orderId, oldStatus, newStatus);
+        return repo.save(order);
     }
 
     @Override
     @Transactional
     public Order cancelOrder(Long orderId) {
+        log.debug("Cancelling order. orderId={}", orderId);
         Order o = repo.findById(orderId).orElseThrow(() -> new IllegalArgumentException("Order not found"));
         if (o.getStatus() != OrderStatus.PENDING) {
             throw new IllegalStateException("Only PENDING orders can be cancelled");
         }
         o.setStatus(OrderStatus.CANCELLED);
+        log.info("Order cancelled. orderId={}", orderId);
         return repo.save(o);
     }
 
     // scheduled method: every 5 minutes convert PENDING -> PROCESSING
     @Override
-    @Scheduled(fixedRate = 300_000) // 300000 ms = 5 minutes
+    @Scheduled(
+        fixedRateString = "${orders.scheduler.rate-ms}",
+        initialDelayString = "${orders.scheduler.initial-delay-ms}"
+    )              
     @Transactional
     public void processPendingOrders() {
+        log.debug("Order scheduler triggered");
         List<Order> pending = repo.findByStatus(OrderStatus.PENDING);
-        if (pending.isEmpty()) return;
+        if (pending.isEmpty()){
+            log.debug("No PENDING orders found");
+            return;
+        }
+        log.info("Processing {} pending orders", pending.size());
         for (Order o : pending) {
             o.setStatus(OrderStatus.PROCESSING);
             repo.save(o);
+            log.info("Order moved to PROCESSING. orderId={}", o.getId());
         }
     }
 }
