@@ -9,7 +9,6 @@ import com.peerislands.demo.service.OrderService;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,12 +77,7 @@ public class OrderServiceImpl implements OrderService {
         return repo.save(order);
     }
 
-    // scheduled method: every 5 minutes convert PENDING -> PROCESSING
-    @Override
-    @Scheduled(
-        fixedRateString = "${orders.scheduler.rate-ms}",
-        initialDelayString = "${orders.scheduler.initial-delay-ms}"
-    )              
+    @Override           
     @Transactional
     public void processPendingOrders() {
         log.debug("Order scheduler triggered");
