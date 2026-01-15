@@ -1,6 +1,8 @@
 package com.peerislands.demo.service.impl;
 
 import com.peerislands.demo.enums.OrderStatus;
+import com.peerislands.demo.exception.InvalidOrderStateException;
+import com.peerislands.demo.exception.OrderNotFoundException;
 import com.peerislands.demo.model.Order;
 import com.peerislands.demo.repository.OrderRepository;
 import com.peerislands.demo.service.OrderService;
@@ -36,7 +38,12 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Optional<Order> getOrder(Long id) {
         log.debug("Fetching order. orderId={}", id);
-        return repo.findById(id);
+         if (repo.existsById(id)) {
+            return repo.findById(id);
+        } else {
+            log.warn("Order not found. orderId={}", id);
+            throw new OrderNotFoundException(id);
+        }
     }
 
     @Override
@@ -49,7 +56,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Order updateStatus(Long orderId, OrderStatus newStatus) {
         log.debug("Updating order status. orderId={}, newStatus={}", orderId, newStatus);
-        Order order = repo.findById(orderId).orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        Order order = repo.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
         OrderStatus oldStatus = order.getStatus();
         order.setStatus(newStatus);
         log.info("Order status updated. orderId={}, {} -> {}", orderId, oldStatus, newStatus);
@@ -60,13 +67,15 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Order cancelOrder(Long orderId) {
         log.debug("Cancelling order. orderId={}", orderId);
-        Order o = repo.findById(orderId).orElseThrow(() -> new IllegalArgumentException("Order not found"));
-        if (o.getStatus() != OrderStatus.PENDING) {
-            throw new IllegalStateException("Only PENDING orders can be cancelled");
-        }
-        o.setStatus(OrderStatus.CANCELLED);
+        Order order = repo.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new InvalidOrderStateException(
+            "Only PENDING orders can be cancelled. current=" + order.getStatus()
+        );
+    }
+        order.setStatus(OrderStatus.CANCELLED);
         log.info("Order cancelled. orderId={}", orderId);
-        return repo.save(o);
+        return repo.save(order);
     }
 
     // scheduled method: every 5 minutes convert PENDING -> PROCESSING

@@ -6,6 +6,9 @@ import com.peerislands.demo.enums.OrderStatus;
 import com.peerislands.demo.model.Order;
 import com.peerislands.demo.model.OrderItem;
 import com.peerislands.demo.service.OrderService;
+
+import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
@@ -19,7 +22,7 @@ public class OrderController {
     public OrderController(OrderService svc) { this.svc = svc; }
 
     @PostMapping
-    public ResponseEntity<OrderResponseDTO> create(@RequestBody CreateOrderRequestDTO req) {
+    public ResponseEntity<OrderResponseDTO> create(@Valid @RequestBody CreateOrderRequestDTO req) {
         Order order = new Order();
         if (req.items != null) {
             order.setItems(req.items.stream()

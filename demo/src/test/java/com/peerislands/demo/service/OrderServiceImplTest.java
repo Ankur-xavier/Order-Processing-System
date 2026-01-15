@@ -1,6 +1,7 @@
 package com.peerislands.demo.service;
 
 import com.peerislands.demo.enums.OrderStatus;
+import com.peerislands.demo.exception.InvalidOrderStateException;
 import com.peerislands.demo.model.Order;
 import com.peerislands.demo.model.OrderItem;
 import com.peerislands.demo.repository.OrderRepository;
@@ -64,7 +65,7 @@ class OrderServiceImplTest {
         Order shipped = samplePending();
         shipped.setStatus(OrderStatus.SHIPPED);
         when(repo.findById(2L)).thenReturn(Optional.of(shipped));
-        Exception ex = assertThrows(IllegalStateException.class, () -> svc.cancelOrder(2L));
+        Exception ex = assertThrows(InvalidOrderStateException.class, () -> svc.cancelOrder(2L));
         assertTrue(ex.getMessage().contains("Only PENDING"));
     }
 
