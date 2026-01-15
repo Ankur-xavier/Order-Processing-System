@@ -72,3 +72,16 @@ src/main/java/com/example/orderprocessor
  ├── repository      # JPA repositories
  ├── model           # Entities and enums
  ├── exception       # Custom exceptions and global handler
+```
+
+---
+## Build Steps
+```bash
+java -version
+javac -version
+
+mvn clean install
+mvn spring-boot:run
+```
+
+
